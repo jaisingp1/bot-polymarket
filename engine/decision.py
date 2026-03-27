@@ -11,12 +11,13 @@ Thresholds (configurable in settings.py):
 from __future__ import annotations
 from dataclasses import dataclass
 from config.settings import (
-    WEIGHT_TECHNICAL, WEIGHT_RECOMMENDATIONS, WEIGHT_SENTIMENT,
+    WEIGHT_TECHNICAL, WEIGHT_RECOMMENDATIONS, WEIGHT_SENTIMENT, WEIGHT_ML,
     BUY_THRESHOLD, SELL_THRESHOLD, CONFIDENCE_THRESHOLD,
 )
 from analysis.technical import compute_technical_signal
 from analysis.recommendations import compute_recommendation_signal
 from analysis.sentiment import compute_sentiment_signal
+from analysis.ml import predict_signal
 from utils.logger import get_logger
 
 log = get_logger("decision")
@@ -34,6 +35,8 @@ class DecisionResult:
     rec_conf: float
     sent_signal: float
     sent_conf: float
+    ml_signal: float     # New ML signal
+    ml_conf: float       # New ML confidence
     reason: str
 
 
@@ -47,13 +50,15 @@ def decide(symbol: str) -> DecisionResult:
     tech_signal, tech_conf     = compute_technical_signal(symbol)
     rec_signal,  rec_conf      = compute_recommendation_signal(symbol)
     sent_signal, sent_conf     = compute_sentiment_signal(symbol)
+    ml_signal, ml_conf         = predict_signal(symbol)
 
     # ── Weighted aggregation ──────────────────────────────────────
-    # Signal_Final = Σ(Wi × Si × Ci) / Σ(Wi × Ci)
+    # Using weights imported from settings
     sources = [
         (WEIGHT_TECHNICAL,       tech_signal, tech_conf,  "Technical"),
         (WEIGHT_RECOMMENDATIONS, rec_signal,  rec_conf,   "Recommendations"),
         (WEIGHT_SENTIMENT,       sent_signal, sent_conf,  "Sentiment"),
+        (WEIGHT_ML,              ml_signal,   ml_conf,    "MachineLearning"),
     ]
 
     numerator   = sum(w * s * c for w, s, c, _ in sources)
@@ -66,14 +71,15 @@ def decide(symbol: str) -> DecisionResult:
             tech_signal=tech_signal, tech_conf=tech_conf,
             rec_signal=rec_signal, rec_conf=rec_conf,
             sent_signal=sent_signal, sent_conf=sent_conf,
+            ml_signal=0.0, ml_conf=0.0,
             reason="No data available from any signal source.",
         )
 
     final_signal = round(numerator / denominator, 4)
     # Confidence = weighted average of individual confidences
-    total_weight = WEIGHT_TECHNICAL + WEIGHT_RECOMMENDATIONS + WEIGHT_SENTIMENT
+    total_weight = WEIGHT_TECHNICAL + WEIGHT_RECOMMENDATIONS + WEIGHT_SENTIMENT + WEIGHT_ML
     final_conf   = round(
-        (WEIGHT_TECHNICAL * tech_conf + WEIGHT_RECOMMENDATIONS * rec_conf + WEIGHT_SENTIMENT * sent_conf)
+        (WEIGHT_TECHNICAL * tech_conf + WEIGHT_RECOMMENDATIONS * rec_conf + WEIGHT_SENTIMENT * sent_conf + WEIGHT_ML * ml_conf)
         / total_weight, 4
     )
 
@@ -108,5 +114,6 @@ def decide(symbol: str) -> DecisionResult:
         tech_signal=tech_signal, tech_conf=tech_conf,
         rec_signal=rec_signal, rec_conf=rec_conf,
         sent_signal=sent_signal, sent_conf=sent_conf,
+        ml_signal=ml_signal, ml_conf=ml_conf,
         reason=reason,
     )
