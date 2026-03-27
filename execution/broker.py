@@ -48,6 +48,11 @@ class BrokerClient:
             self._simulation = True
 
     @property
+    def api(self):
+        """Expose the underlying Alpaca client."""
+        return self._client
+
+    @property
     def is_simulation(self) -> bool:
         return self._simulation
 
@@ -72,11 +77,54 @@ class BrokerClient:
             return 0.0
 
         try:
-            from alpaca.trading.requests import GetPortfolioHistoryRequest  # noqa
             position = self._client.get_open_position(symbol)
             return float(position.qty)
         except Exception:
             return 0.0
+
+    def get_all_positions(self) -> list:
+        """Return a list of all open positions."""
+        if self._simulation:
+            return []
+        try:
+            positions = self._client.get_all_positions()
+            return [
+                {
+                    "symbol": p.symbol,
+                    "qty": float(p.qty),
+                    "market_value": float(p.market_value),
+                    "current_price": float(p.current_price),
+                    "unrealized_pl": float(p.unrealized_pl),
+                    "change_today": float(p.change_today) if p.change_today else 0.0
+                }
+                for p in positions
+            ]
+        except Exception as e:
+            log.error(f"Failed to fetch positions: {e}")
+            return []
+
+    def get_account_info(self) -> dict:
+        """Fetch full account details."""
+        if self._simulation:
+            return {
+                "equity": 10000.0,
+                "cash": 10000.0,
+                "buying_power": 20000.0,
+                "currency": "USD",
+                "status": "SIMULATED"
+            }
+        try:
+            acc = self._client.get_account()
+            return {
+                "equity": float(acc.equity),
+                "cash": float(acc.cash),
+                "buying_power": float(acc.buying_power),
+                "currency": acc.currency,
+                "status": acc.status
+            }
+        except Exception as e:
+            log.error(f"Failed to fetch account info: {e}")
+            return {}
 
     def submit_market_order(
         self, symbol: str, side: str, qty: float

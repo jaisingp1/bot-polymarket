@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity AI Trading Hub v7 - Autonomous</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { brand: { 900: '#0f172a', 800: '#1e293b', primary: '#3b82f6', accent: '#10b981', danger: '#ef4444' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #020617; color: #f8fafc; background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%); background-attachment: fixed; }
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .spinner { border: 2px solid rgba(255,255,255,0.1); width: 14px; height: 14px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .search-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 100; background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; max-height: 200px; overflow-y: auto; }
+        .search-item:hover { background: #334155; cursor: pointer; }
+        .gauge-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; position: relative; overflow: hidden; }
+        .signal-indicator { position: absolute; top: 0; bottom: 0; width: 2px; background: white; transform: translateX(-50%); transition: left 1s ease-out; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-200 antialiased p-4 md:p-6 pb-20">
+
+    <div class="max-w-7xl mx-auto space-y-4">
+        
+        <!-- Header -->
+        <header class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <!-- Brand -->
+            <div class="lg:col-span-3 glass-panel rounded-2xl p-5 flex flex-col justify-center">
+                <div class="flex items-center gap-3">
+                    <div id="pulseIndicator" class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
+                    <h1 class="text-xl font-black text-white italic tracking-tighter uppercase leading-none">Antigravity AI</h1>
+                </div>
+                <div class="mt-2 flex gap-2 text-[8px] font-black tracking-widest text-slate-600 uppercase">
+                    <span id="health-y">YF</span><span id="health-a">AV</span><span id="health-f">FH</span><span id="health-alp" class="text-emerald-500">ALP</span>
+                </div>
+            </div>
+
+            <!-- Balances -->
+            <div class="lg:col-span-6 glass-panel rounded-2xl p-5 grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Patrimonio (Equity)</p>
+                    <h2 id="portEquity" class="text-2xl font-mono font-bold text-white mt-1">$0.00</h2>
+                    <p id="portStatus" class="text-[8px] text-slate-600 font-bold uppercase mt-1">Conectando...</p>
+                </div>
+                <div class="text-right border-l border-white/5 pl-4">
+                    <p class="text-[9px] text-slate-500 uppercase font-black tracking-widest">Poder de Compra</p>
+                    <h2 id="portBP" class="text-2xl font-mono font-bold text-emerald-400 mt-1">$0.00</h2>
+                    <p id="portCash" class="text-[8px] text-slate-600 font-bold uppercase mt-1">Cash disponible</p>
+                </div>
+            </div>
+
+            <!-- Global Mode -->
+            <div class="lg:col-span-3 glass-panel rounded-2xl p-5 flex flex-col justify-center border-l-4 border-l-blue-500" id="modeContainer">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="modeLabel" class="text-[10px] font-black text-blue-400 uppercase tracking-widest">PAPER TRADING</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="modeSwitch" class="sr-only peer">
+                        <div class="w-10 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                </div>
+                <p class="text-[8px] text-slate-500 font-bold uppercase">Entorno de Operación</p>
+            </div>
+        </header>
+
+        <!-- Warning Row -->
+        <div id="liveWarning" class="hidden bg-red-600/10 border border-red-600/30 py-2 px-4 rounded-xl text-red-500 font-black text-center text-[9px] uppercase tracking-[0.2em] animate-pulse">
+            SISTEMA EN MODO REAL - RIESGO FINANCIERO ACTIVO
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Left: Strategic Sidebar -->
+            <aside class="lg:col-span-3 space-y-4">
+                
+                <!-- Autonomous Scheduler (NEW) -->
+                <div class="glass-panel rounded-2xl p-5 border-t-4 border-t-amber-500/50">
+                    <h3 class="text-xs font-black text-slate-100 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <svg class="h-3 w-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                        Programación Autonomous
+                    </h3>
+                    
+                    <!-- Interval Switch -->
+                    <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl mb-4 border border-white/5">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Escaneo cada 30 min</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="intervalToggle" class="sr-only peer">
+                            <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Fixed Schedules List -->
+                    <div id="scheduleList" class="space-y-2 mb-4 max-h-[150px] overflow-y-auto pr-1">
+                        <!-- Items pumped by JS -->
+                    </div>
+
+                    <!-- Add Schedule Form -->
+                    <div class="pt-4 border-t border-white/5 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="time" id="schedTime" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                            <input type="text" id="schedLabel" placeholder="Etiqueta" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white uppercase font-bold">
+                        </div>
+                        <button onclick="addSchedule()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-[9px] font-black rounded-lg uppercase tracking-widest text-blue-400 border border-blue-400/20">Añadir Ejecución</button>
+                    </div>
+                </div>
+
+                <!-- Manual Control -->
+                <div class="glass-panel rounded-2xl p-5">
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Analizador AI</h3>
+                    <div class="relative">
+                        <input type="text" id="customSymbol" placeholder="AAPL, TSLA..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500 uppercase font-black">
+                        <div id="searchResults" class="search-results hidden"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-3">
+                        <button id="btnCustomDry" class="py-2 bg-slate-800 hover:bg-slate-700 text-[10px] font-black rounded-lg border border-slate-700">PENSAR</button>
+                        <button id="btnCustomLive" class="py-2 bg-blue-600 hover:bg-blue-500 text-[10px] font-black rounded-lg uppercase">Ejecutar</button>
+                    </div>
+                </div>
+
+                <!-- Market Radar -->
+                <div class="glass-panel rounded-2xl p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xs font-black text-white uppercase tracking-widest">Radar</h3>
+                        <button onclick="fetchSuggestions()" class="text-[9px] text-blue-400 font-bold uppercase">Scan</button>
+                    </div>
+                    <div id="suggestionsGrid" class="space-y-1.5 pr-1">
+                        <p class="text-[10px] text-slate-600 text-center py-4 italic">Scan inactivo.</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center: Intelligence Console -->
+            <section class="lg:col-span-6 space-y-4">
+                <div class="glass-panel rounded-2xl p-6 min-h-[500px] flex flex-col relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none"></div>
+                    
+                    <div class="flex justify-between items-center mb-6 z-10">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                             <span class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-ping"></span>
+                             Consola de Diagnóstico Nuclear
+                        </h3>
+                        <div id="actionStatus" class="text-[9px] font-black px-2 py-0.5 bg-slate-800 rounded text-slate-500 tracking-tighter uppercase">Ready</div>
+                    </div>
+
+                    <div id="resultsContainer" class="flex-1 space-y-4 z-10 overflow-y-auto pr-1">
+                        <div id="waitingPanel" class="h-full flex flex-col items-center justify-center opacity-10 py-20 grayscale">
+                             <svg class="h-24 w-24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="0.5" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-panel rounded-2xl p-0 overflow-hidden opacity-60">
+                    <table class="w-full text-left text-[9px] uppercase font-bold">
+                        <tbody id="historyTableBody" class="divide-y divide-white/5"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Right: Assets & Bot Strategy -->
+            <aside class="lg:col-span-3 space-y-4">
+                <div class="glass-panel rounded-2xl p-0 overflow-hidden h-full flex flex-col min-h-[600px] border-l border-white/5">
+                    <div class="px-5 py-4 border-b border-white/5 bg-slate-900/40">
+                         <h3 class="text-xs font-black text-white uppercase tracking-widest">Cartera Alpaca</h3>
+                         <p class="text-[8px] text-slate-500 font-bold uppercase mt-1">Estrategia AI Activa</p>
+                    </div>
+                    <div id="positionsList" class="flex-1 divide-y divide-white/5 overflow-y-auto">
+                        <p class="text-[10px] text-slate-700 text-center py-20 font-bold uppercase tracking-widest">Sincronizando...</p>
+                    </div>
+                    <div class="p-4 bg-slate-950 border-t border-white/5 text-center">
+                        <button onclick="fetchPositions()" class="text-[9px] font-black text-slate-400 hover:text-blue-400 uppercase tracking-[0.2em] transition-all">Sincronizar Datos</button>
+                    </div>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+    <script>
+        let IS_PAPER_MODE = true;
+
+        const updateStatusMsg = (msg, error=false) => {
+            const el = document.getElementById('actionStatus');
+            el.innerText = msg;
+            el.className = `text-[9px] font-black px-2 py-0.5 rounded ${error ? 'bg-red-900/40 text-red-500':'bg-slate-800 text-slate-500'}`;
+        };
+
+        // Decision Rendering
+        const renderDecision = (data) => {
+            const container = document.getElementById('resultsContainer');
+            document.getElementById('waitingPanel').classList.add('hidden');
+            if(!Array.isArray(data)) data = [data];
+
+            data.forEach(item => {
+                const action = item.action || 'HOLD';
+                const col = action === 'BUY' ? 'emerald' : action === 'SELL' ? 'red' : 'slate';
+                const sigPct = ((item.signal + 1) / 2) * 100;
+                
+                const html = `
+                <div class="bg-slate-900/80 border border-white/5 rounded-2xl p-5 mb-4 animate-[fadeIn_0.5s_ease-out] shadow-xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-baseline gap-3">
+                            <h4 class="text-4xl font-black text-white tracking-tighter">${item.symbol}</h4>
+                            <span class="text-[10px] font-mono text-slate-500">$${item.price.toFixed(2)}</span>
+                        </div>
+                        <span class="text-sm font-black px-3 py-1 rounded bg-${col}-500/20 text-${col}-400 border border-${col}-500/20 uppercase">${action}</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[8px] font-black text-slate-600 uppercase">
+                                <span>Bear</span><span class="text-white">Signal: ${item.signal.toFixed(2)}</span><span>Bull</span>
+                            </div>
+                            <div class="gauge-container relative"><div class="signal-indicator" style="left: ${sigPct}%"></div><div class="absolute inset-0 bg-gradient-to-r from-red-900/20 via-slate-800/10 to-emerald-900/20"></div></div>
+                        </div>
+                        <div class="flex justify-between items-center bg-white/5 rounded-xl px-4 py-2">
+                             <p class="text-[8px] text-slate-500 uppercase font-black">Confianza</p>
+                             <p class="text-2xl font-mono font-bold text-white">${(item.confidence*100).toFixed(0)}%</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-black/40 rounded-xl border border-white/5">
+                        <p class="text-[10px] text-slate-300 italic leading-relaxed">"${item.reason}"</p>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('afterbegin', html);
+            });
+            fetchHistory(); fetchAccount(); fetchPositions();
+        };
+
+        // Scheduler API
+        async function fetchSchedules() {
+            const res = await fetch('/api/schedules');
+            const data = await res.json();
+            const list = document.getElementById('scheduleList');
+            list.innerHTML = '';
+            data.forEach(s => {
+                if(s.is_interval) {
+                    document.getElementById('intervalToggle').checked = s.is_active === 1;
+                    return;
+                }
+                list.innerHTML += `
+                <div class="flex justify-between items-center p-2.5 bg-white/5 rounded-xl border border-white/5 group">
+                    <div>
+                        <p class="text-xs font-mono font-bold text-white">${s.time_at}</p>
+                        <p class="text-[7px] text-slate-500 uppercase font-black tracking-widest">${s.label}</p>
+                    </div>
+                    <button onclick="deleteSchedule(${s.id})" class="text-slate-600 hover:text-red-500 p-1 transition-all opacity-0 group-hover:opacity-100">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>`;
+            });
+        }
+
+        async function addSchedule() {
+            const time = document.getElementById('schedTime').value;
+            const label = document.getElementById('schedLabel').value || "Manual";
+            if(!time) return;
+            await fetch('/api/schedules', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ time_at: time, label: label, is_interval: 0 })
+            });
+            fetchSchedules();
+        }
+
+        async function deleteSchedule(id) {
+            await fetch(`/api/schedules?id=${id}`, { method:'DELETE' });
+            fetchSchedules();
+        }
+
+        document.getElementById('intervalToggle').onchange = async (e) => {
+            // In a real app we'd update is_active in DB. For now we toggle by label in simple logic:
+            const sids = Array.from(await (await fetch('/api/schedules')).json());
+            const intv = sids.find(x => x.is_interval === 1);
+            if(intv) {
+                // Actually need a PATCH or specific Toggle endpoint. 
+                // Shortcut: Toggle by delete and re-add or just re-POST
+                await fetch(`/api/schedules?id=${intv.id}`, { method:'DELETE' });
+                await fetch('/api/schedules', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ time_at: "30", label: "Intervalo 30m", is_interval: 1, is_active: e.target.checked ? 1 : 0 })
+                });
+            }
+            fetchSchedules();
+        };
+
+        // Core API
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                IS_PAPER_MODE = data.mode === 'PAPER';
+                updateUIStyles();
+            } catch(e){}
+        }
+
+        async function fetchAccount() {
+            try {
+                const res = await fetch('/api/account');
+                const d = await res.json();
+                if(d.error) return;
+                document.getElementById('portEquity').innerText = `$${d.equity.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                document.getElementById('portBP').innerText = `$${d.buying_power.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                document.getElementById('portCash').innerText = d.cash.toLocaleString('en-US', {style:'currency', currency:'USD'});
+                document.getElementById('portStatus').innerText = `${d.status} CONNECTED`;
+            } catch(e){}
+        }
+
+        async function fetchPositions() {
+            try {
+                const res = await fetch('/api/positions');
+                const data = await res.json();
+                const list = document.getElementById('positionsList');
+                if(!data.length) { list.innerHTML = `<p class="text-[10px] text-slate-700 text-center py-20 uppercase font-black">Sin Posiciones</p>`; return; }
+                list.innerHTML = '';
+                data.forEach(p => {
+                    const col = p.bot_suggestion === 'BUY' ? 'emerald' : p.bot_suggestion === 'SELL' ? 'red' : 'slate';
+                    list.innerHTML += `
+                    <div class="px-5 py-4 hover:bg-white/5 transition group cursor-default">
+                        <div class="flex justify-between items-center">
+                            <span class="font-black text-white text-lg tracking-tight">${p.symbol}</span>
+                            <span class="text-xs font-mono text-slate-500">$${p.market_value.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between mt-1 items-center text-[8px] font-black uppercase text-slate-600">
+                            <span>Qty: ${p.qty}</span>
+                            <span class="text-${col}-500/80">RECO: ${p.bot_suggestion}</span>
+                        </div>
+                        <p class="mt-2 text-[7px] text-slate-700 hidden group-hover:block transition-all italic leading-none">"${p.bot_reason}"</p>
+                    </div>`;
+                });
+            } catch(e){}
+        }
+
+        const updateUIStyles = () => {
+             const label = document.getElementById('modeLabel');
+             const cont = document.getElementById('modeContainer');
+             const banner = document.getElementById('liveWarning');
+             document.getElementById('modeSwitch').checked = !IS_PAPER_MODE;
+             if(!IS_PAPER_MODE){
+                 label.innerText = "LIVE TRADING"; label.classList.replace('text-blue-400', 'text-red-500');
+                 cont.classList.replace('border-l-blue-500', 'border-l-red-600');
+                 banner.classList.remove('hidden');
+             } else {
+                 label.innerText = "PAPER TRADING"; label.classList.replace('text-red-500', 'text-blue-400');
+                 cont.classList.replace('border-l-red-600', 'border-l-blue-500');
+                 banner.classList.add('hidden');
+             }
+        }
+
+        document.getElementById('modeSwitch').onchange = async (e) => {
+            if(e.target.checked && !confirm("¿ACTIVAR TRADING REAL?")){ e.target.checked = false; return; }
+            await fetch('/api/toggle_trading', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({paper_trading: !e.target.checked}) });
+            fetchStatus(); fetchAccount();
+        };
+
+        const postAct = async (ep, bid, sym='') => {
+            const btn = document.getElementById(bid); btn.disabled = true;
+            updateStatusMsg("Analyzing...");
+            try {
+                const res = await fetch(ep, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ symbol: sym, dry_run: ep.includes('dry') }) });
+                renderDecision(await res.json());
+                updateStatusMsg("Ready");
+            } catch(e){} finally { btn.disabled = false; }
+        };
+
+        document.getElementById('btnCustomDry').onclick = () => postAct('/api/trade_custom', 'btnCustomDry', document.getElementById('customSymbol').value);
+        document.getElementById('btnCustomLive').onclick = () => postAct('/api/trade_custom', 'btnCustomLive', document.getElementById('customSymbol').value);
+
+        async function fetchHistory() {
+            const res = await fetch('/api/history');
+            const data = await res.json();
+            const body = document.getElementById('historyTableBody');
+            body.innerHTML = '';
+            data.slice(0, 8).forEach(r => {
+                const col = r.action === 'BUY' ? 'text-emerald-500' : r.action === 'SELL' ? 'text-red-500' : 'text-slate-600';
+                body.innerHTML += `<tr class="border-b border-white/5"><td class="px-5 py-2 whitespace-nowrap">${r.symbol}</td><td class="px-5 py-2 ${col}">${r.action}</td><td class="px-5 py-2 text-right">$${r.price.toFixed(2)}</td></tr>`;
+            });
+        }
+
+        async function fetchSuggestions() {
+            const grid = document.getElementById('suggestionsGrid');
+            grid.innerHTML = '<div class="py-10 text-center"><div class="spinner"></div></div>';
+            const res = await fetch('/api/suggestions');
+            const data = await res.json();
+            grid.innerHTML = '';
+            data.forEach(s => {
+                const col = s.action === 'BUY' ? 'emerald' : s.action === 'SELL' ? 'red' : 'slate';
+                grid.innerHTML += `<div class="bg-slate-900 border border-${col}-600/20 rounded-xl p-2.5 cursor-pointer hover:bg-slate-800 transition" onclick="document.getElementById('customSymbol').value='${s.symbol}'">
+                    <div class="flex justify-between font-black text-[9px] uppercase"><span>${s.symbol}</span><span class="text-${col}-500">${s.action}</span></div>
+                    <div class="mt-1 flex justify-between text-[7px] text-slate-500 font-bold uppercase"><span>Sig: ${s.signal.toFixed(1)}</span><span>Conf: ${(s.confidence*100).toFixed(0)}%</span></div>
+                </div>`;
+            });
+        }
+
+        window.onload = () => {
+            fetchStatus(); fetchAccount(); fetchPositions(); fetchHistory(); fetchSchedules();
+            setInterval(() => { fetchAccount(); fetchPositions(); }, 60000);
+        };
+    </script>
+</body>
+</html>
