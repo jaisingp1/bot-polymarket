@@ -240,6 +240,7 @@ def trade_custom():
         summary["tech"] = {"s": decision.tech_signal, "c": decision.tech_conf}
         summary["rec"] = {"s": decision.rec_signal, "c": decision.rec_conf}
         summary["sent"] = {"s": decision.sent_signal, "c": decision.sent_conf}
+        summary["ml"] = {"s": decision.ml_signal, "c": decision.ml_conf}
         
         return jsonify([summary])
     except Exception as e:
@@ -265,7 +266,8 @@ def suggestions():
                 "reason": decision.reason,
                 "tech": {"s": decision.tech_signal, "c": decision.tech_conf},
                 "rec": {"s": decision.rec_signal, "c": decision.rec_conf},
-                "sent": {"s": decision.sent_signal, "c": decision.sent_conf}
+                "sent": {"s": decision.sent_signal, "c": decision.sent_conf},
+                "ml": {"s": decision.ml_signal, "c": decision.ml_conf}
             })
         except Exception as e:
             pass # Silently skip errors on suggestions
@@ -277,13 +279,23 @@ def suggestions():
 
 def run_scheduled_job():
     """Triggered by the scheduler."""
+    global CURRENT_PAPER_MODE
     with app.app_context():
+        from engine.risk import is_market_open
+
+        # Check if market is open before doing any API calls
+        # We allow paper trading to potentially bypass this if strictly needed for testing,
+        # but the request was specifically to save tokens.
+        if not is_market_open() and not CURRENT_PAPER_MODE:
+            print(f"[{datetime.now()}] Autonomo: Mercado cerrado. Saltando ejecución para ahorrar tokens.")
+            return
+
         print(f"[{datetime.now()}] Autonomo: Iniciando escaneo de {len(SYMBOLS)} símbolos...")
         broker = BrokerClient()
         for symbol in SYMBOLS:
             try:
                 decision = decide(symbol)
-                execute_decision(decision, broker, dry_run=PAPER_TRADING)
+                execute_decision(decision, broker, dry_run=CURRENT_PAPER_MODE)
             except Exception as e:
                 print(f"Error en job autónomo ({symbol}): {e}")
 

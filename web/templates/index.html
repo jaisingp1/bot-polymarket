@@ -219,9 +219,13 @@
                                 <span>Bear</span><span class="text-white">Signal: ${item.signal.toFixed(2)}</span><span>Bull</span>
                             </div>
                             <div class="gauge-container relative"><div class="signal-indicator" style="left: ${sigPct}%"></div><div class="absolute inset-0 bg-gradient-to-r from-red-900/20 via-slate-800/10 to-emerald-900/20"></div></div>
+                            <div class="mt-2 flex justify-between text-[8px] text-slate-500 font-bold uppercase">
+                                <span>ML Conf: ${item.ml ? (item.ml.c * 100).toFixed(0) : 0}%</span>
+                                <span class="${item.ml && item.ml.s > 0 ? 'text-emerald-500' : 'text-red-500'}">ML Sig: ${item.ml ? item.ml.s.toFixed(2) : '0.00'}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center bg-white/5 rounded-xl px-4 py-2">
-                             <p class="text-[8px] text-slate-500 uppercase font-black">Confianza</p>
+                        <div class="flex flex-col justify-center items-center bg-white/5 rounded-xl px-4 py-2">
+                             <p class="text-[8px] text-slate-500 uppercase font-black">Confianza Total</p>
                              <p class="text-2xl font-mono font-bold text-white">${(item.confidence*100).toFixed(0)}%</p>
                         </div>
                     </div>
@@ -394,7 +398,11 @@
                 const col = s.action === 'BUY' ? 'emerald' : s.action === 'SELL' ? 'red' : 'slate';
                 grid.innerHTML += `<div class="bg-slate-900 border border-${col}-600/20 rounded-xl p-2.5 cursor-pointer hover:bg-slate-800 transition" onclick="document.getElementById('customSymbol').value='${s.symbol}'">
                     <div class="flex justify-between font-black text-[9px] uppercase"><span>${s.symbol}</span><span class="text-${col}-500">${s.action}</span></div>
-                    <div class="mt-1 flex justify-between text-[7px] text-slate-500 font-bold uppercase"><span>Sig: ${s.signal.toFixed(1)}</span><span>Conf: ${(s.confidence*100).toFixed(0)}%</span></div>
+                    <div class="mt-1 flex justify-between text-[7px] text-slate-500 font-bold uppercase">
+                        <span>Sig: ${s.signal.toFixed(1)}</span>
+                        <span>ML: ${s.ml ? s.ml.s.toFixed(1) : '0.0'}</span>
+                        <span>Conf: ${(s.confidence*100).toFixed(0)}%</span>
+                    </div>
                 </div>`;
             });
         }

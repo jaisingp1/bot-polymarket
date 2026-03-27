@@ -33,9 +33,10 @@ EXECUTION_TIME_ET: str = os.getenv("EXECUTION_TIME_ET", "09:35")
 
 # ─── Decision Engine Thresholds ──────────────────────────────────────────────
 # Signal weights must sum to 1.0
-WEIGHT_TECHNICAL: float = 0.40
-WEIGHT_RECOMMENDATIONS: float = 0.35
-WEIGHT_SENTIMENT: float = 0.25
+WEIGHT_TECHNICAL: float = 0.25
+WEIGHT_RECOMMENDATIONS: float = 0.25
+WEIGHT_SENTIMENT: float = 0.20
+WEIGHT_ML: float = 0.30
 
 # Thresholds for BUY/SELL decision
 BUY_THRESHOLD: float = 0.6

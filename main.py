@@ -84,6 +84,14 @@ def run_once(symbols: list[str], dry_run: bool = False) -> None:
 
 # ─── Scheduler ───────────────────────────────────────────────────────────────
 
+def run_scheduled_wrapper(symbols: list[str], dry_run: bool) -> None:
+    """Wrapper to check market open status before running the pipeline."""
+    from engine.risk import is_market_open
+    if not is_market_open() and not dry_run:
+        log.info("Market is closed today. Skipping scheduled run to save API tokens.")
+        return
+    run_once(symbols, dry_run=dry_run)
+
 def run_scheduled(symbols: list[str]) -> None:
     """
     Schedule the bot to run every weekday at EXECUTION_TIME_ET (ET).
@@ -95,11 +103,13 @@ def run_scheduled(symbols: list[str]) -> None:
     )
 
     # schedule library uses local time — warn if not ET
-    schedule.every().monday.at(EXECUTION_TIME_ET).do(run_once, symbols=symbols, dry_run=False)
-    schedule.every().tuesday.at(EXECUTION_TIME_ET).do(run_once, symbols=symbols, dry_run=False)
-    schedule.every().wednesday.at(EXECUTION_TIME_ET).do(run_once, symbols=symbols, dry_run=False)
-    schedule.every().thursday.at(EXECUTION_TIME_ET).do(run_once, symbols=symbols, dry_run=False)
-    schedule.every().friday.at(EXECUTION_TIME_ET).do(run_once, symbols=symbols, dry_run=False)
+    # Changed to use wrapper function to save tokens
+    from config.settings import PAPER_TRADING
+    schedule.every().monday.at(EXECUTION_TIME_ET).do(run_scheduled_wrapper, symbols=symbols, dry_run=PAPER_TRADING)
+    schedule.every().tuesday.at(EXECUTION_TIME_ET).do(run_scheduled_wrapper, symbols=symbols, dry_run=PAPER_TRADING)
+    schedule.every().wednesday.at(EXECUTION_TIME_ET).do(run_scheduled_wrapper, symbols=symbols, dry_run=PAPER_TRADING)
+    schedule.every().thursday.at(EXECUTION_TIME_ET).do(run_scheduled_wrapper, symbols=symbols, dry_run=PAPER_TRADING)
+    schedule.every().friday.at(EXECUTION_TIME_ET).do(run_scheduled_wrapper, symbols=symbols, dry_run=PAPER_TRADING)
 
     notify("🤖 Bot started", f"Scheduled at {EXECUTION_TIME_ET} ET | Symbols: {', '.join(symbols)}")
 

@@ -68,6 +68,23 @@ def _sma_signal(close: float, sma20: float, sma50: float) -> Signal:
         return Signal(_clamp(-diff * 10), 0.6, "SMA")
 
 
+def get_atr(symbol: str, period: int = 14) -> float | None:
+    """Fetch Average True Range (ATR) for position sizing/risk management."""
+    try:
+        df = get_price_history(symbol, period="3mo", interval="1d")
+        if df is None or len(df) < period + 1:
+            return None
+
+        import pandas_ta as ta
+        atr = ta.atr(df["High"], df["Low"], df["Close"], length=period)
+        if atr is not None and not atr.empty:
+            return float(atr.iloc[-1])
+        return None
+    except Exception as e:
+        log.error(f"[{symbol}] Error calculating ATR: {e}")
+        return None
+
+
 def compute_technical_signal(symbol: str) -> tuple[float, float]:
     """
     Compute aggregated technical signal for symbol.
